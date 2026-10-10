@@ -1,45 +1,34 @@
 # Drone selection decision-support system for small EU ports
 
-Course project (DV2573 Decision Support Systems, Blekinge Institute of Technology). It ranks 20 commercial drones for five port missions and explains the result, with answers grounded in EU drone regulation text.
+A course project (DV2573 Decision Support Systems, Blekinge Institute of Technology). It ranks 20 commercial drones for five port missions and explains the ranking using EU drone rules.
 
 **Demo:** [frontend](https://intelligent-dss-for-drone-selection-sandy.vercel.app) · [API docs](https://intelligent-dss-for-drone-selection-in.onrender.com/docs)
 
-## Pipeline
+## What we did
+- Collected 20 commercial drones (DJI, Parrot, Autel, Wingtra, Skydio, Nordic Drones and others) with 20 criteria each from manufacturer specs.
+- Defined five port missions: surveillance, security, inspection, environmental monitoring and emergency response, with budgets from EUR 8,000 to 35,000.
+- Wrote 22 rules from EU 2019/947 that remove drones that cannot fly a mission.
+- Weighted the criteria with AHP, ranked the drones with TOPSIS, and checked how stable the ranking is with a Monte Carlo test.
+- Added an assistant that explains the result and answers questions from the 617-page EASA rules PDF, with page numbers.
+
+## Results
+- The AHP matrix has a consistency ratio of 0.0159.
+- The Monte Carlo test (300 runs, weights changed by ±20%) labels each ranking as HIGH, MEDIUM or LOW stability.
+- The assistant's answers cite pages of the EASA rules.
+
+## How it was built
 
 ```
 scenario + drone specs -> rule filter (22 rules) -> AHP weights -> TOPSIS ranking
-                       -> Monte Carlo weight sensitivity -> LLM explanation (RAG on EASA rules)
+                       -> Monte Carlo sensitivity -> LLM explanation (RAG on EASA rules)
 ```
 
-| Step | What it does |
-|---|---|
-| Rule base | 22 rules from EU 2019/947 and operational limits remove drones that cannot fly the mission |
-| AHP | 20x20 pairwise matrix (Saaty scale), consistency ratio 0.0159 |
-| TOPSIS | Closeness coefficient CC = D- / (D+ + D-) on the weighted, normalised matrix |
-| Sensitivity | 300 Monte Carlo runs with ±20% weight perturbation, labelled HIGH / MEDIUM / LOW stability |
-| Explanation | Local Ollama (`llama3.1:8b`) in development, Groq (`openai/gpt-oss-120b`) in production, set by `LLM_PROVIDER` |
-| RAG | 617-page EASA Easy Access Rules PDF, about 3,600 chunks, Cohere embeddings, FAISS top-4, answers cite page numbers |
+- **RAG:** the EASA PDF is split into about 3,600 chunks, embedded with Cohere and searched with FAISS (top 4).
+- **LLM:** Ollama `llama3.1:8b` locally and Groq `openai/gpt-oss-120b` in production.
+- **Frontend and hosting:** static page on Vercel, API on Render.
 
-## Data
-
-20 commercial drones (DJI, Parrot, Autel, Wingtra, Skydio, Nordic Drones and others) described by 20 criteria taken from manufacturer specifications, and five port scenarios (surveillance, security, inspection, environmental monitoring, emergency response, budgets EUR 8,000 to 35,000).
-
-## Run
-
-```bash
-cd api && pip install -r requirements.txt
-export LLM_PROVIDER=ollama          # or groq, with GROQ_API_KEY
-export COHERE_API_KEY=...           # only to rebuild the index: python retrieval/ingest.py
-uvicorn index:app --reload --port 8003
-cd ../public && python -m http.server 8081
-```
-
-Endpoints: `GET /api/drones`, `/api/scenarios`, `/api/ahp`; `POST /api/evaluate`, `/api/evaluate/custom-scenario`, `/api/ai/overview`.
-
-## Limits
-
-The scores come from published specifications and expert pairwise judgements, not field trials. There are no automated tests.
+## Tech stack
+Python, FastAPI, NumPy, FAISS, Cohere embeddings, Ollama, Groq, HTML/JavaScript, Vercel, Render.
 
 ## Team
-
-Sriya Chittaneni, Sri Sumedh Pisapati, Meghashyam Sai Dontha, Daiki Saito, Venkata Naga Sai Yaswanth Deevi. References: Saaty and Vargas (2012), Hwang and Yoon (TOPSIS), EU 2019/947.
+Sriya Chittaneni, Sri Sumedh Pisapati, Meghashyam Sai Dontha, Daiki Saito, Venkata Naga Sai Yaswanth Deevi.
